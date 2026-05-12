@@ -25,11 +25,14 @@ export interface Trade {
 export interface Contractor {
   id: string
   name: string
-  company: string | null
+  trade_id?: string | null // Neu hinzugefügt
   phone: string | null
-  email: string | null
-  notes: string | null
   created_at: string
+  // Optionale Felder falls du sie später nutzen willst
+  company?: string | null
+  email?: string | null
+  notes?: string | null
+  trade?: Trade // Für den Join
 }
 
 export interface Task {
@@ -48,7 +51,6 @@ export interface Task {
   created_by: string | null
   created_at: string
   updated_at: string
-  // joined
   room?: Room
   trade?: Trade
   contractor?: Contractor
@@ -67,6 +69,7 @@ export interface Document {
   file_url: string
   file_type: string | null
   uploaded_by: string | null
+  trade_id?: string | null // HIER: Das hat Vercel gefehlt!
   created_at: string
 }
 
@@ -98,7 +101,10 @@ export interface Expense {
   paid: boolean
   document_id: string | null
   trade_id: string | null
+  store_name?: string | null // Neu hinzugefügt
+  receipt_url?: string | null // Neu hinzugefügt
   created_at: string
+  trade?: Trade // Für den Join
 }
 
 export interface CalendarEvent {
