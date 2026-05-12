@@ -11,16 +11,34 @@ export async function getExpenses() {
   return data as Expense[]
 }
 
+// Erweitert, um store_name, receipt_url und trade_id zu speichern
 export async function createExpense(expense: Partial<Expense>) {
   const supabase = createClient()
-  const { data, error } = await supabase.from('expenses').insert(expense).select().single()
+  const { data, error } = await supabase
+    .from('expenses')
+    .insert({
+      title: expense.title,
+      amount: expense.amount,
+      paid: expense.paid,
+      trade_id: expense.trade_id,
+      store_name: expense.store_name, // Neu: Ladenname
+      receipt_url: expense.receipt_url  // Neu: URL zum Foto
+    })
+    .select('*, trade:trades(id, name)')
+    .single()
+  
   if (error) throw error
   return data as Expense
 }
 
 export async function updateExpense(id: string, updates: Partial<Expense>) {
   const supabase = createClient()
-  const { data, error } = await supabase.from('expenses').update(updates).eq('id', id).select().single()
+  const { data, error } = await supabase
+    .from('expenses')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
   if (error) throw error
   return data as Expense
 }

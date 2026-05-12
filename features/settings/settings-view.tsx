@@ -1,142 +1,236 @@
 'use client'
 import { useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { exportTasksToCSV, exportShoppingToCSV, exportExpensesToCSV, exportExpensesToXLSX } from '@/services/export'
 import { toast } from '@/hooks/use-toast'
-import { createClient } from '@/lib/supabase/client'
-import type { Task, ShoppingItem, Expense } from '@/types'
-import { Download, User, Shield, FileSpreadsheet, FileText } from 'lucide-react'
+import { 
+  Trash2, Plus, Wrench, Home, HardHat, User, LogOut, Phone, Tag 
+} from 'lucide-react'
 
 interface Props {
-  profile: { id: string; name: string; email: string; role: string } | null
+  profile: any
   userId: string
-  tasks: Task[]
-  shopping: ShoppingItem[]
-  expenses: Expense[]
+  initialRooms: any[]
+  initialTrades: any[]
+  initialContractors: any[]
 }
 
-export function SettingsView({ profile, tasks, shopping, expenses }: Props) {
-  const [name, setName] = useState(profile?.name ?? '')
-  const [saving, setSaving] = useState(false)
+export function SettingsView({ 
+  profile, 
+  userId, 
+  initialRooms, 
+  initialTrades, 
+  initialContractors 
+}: Props) {
+  const supabase = createClient()
+  const [rooms, setRooms] = useState(initialRooms)
+  const [trades, setTrades] = useState(initialTrades)
+  const [contractors, setContractors] = useState(initialContractors)
 
-  async function handleSaveProfile() {
-    setSaving(true)
-    const supabase = createClient()
-    const { error } = await supabase.from('users').update({ name }).eq('id', profile?.id)
-    if (error) {
-      toast({ title: 'Fehler', description: error.message, variant: 'destructive' })
-    } else {
-      toast({ title: 'Profil gespeichert' })
-    }
-    setSaving(false)
+  // States für neue Einträge
+  const [newRoom, setNewRoom] = useState('')
+  const [newTrade, setNewTrade] = useState('')
+  const [newContractor, setNewContractor] = useState({ name: '', trade_id: '', phone: '' })
+
+  // --- LOGIK: HINZUFÜGEN ---
+  async function handleAddRoom() {
+    if (!newRoom) return
+    const { data, error } = await supabase.from('rooms').insert({ name: newRoom }).select().single()
+    if (error) return toast({ title: 'Fehler', variant: 'destructive' })
+    setRooms([...rooms, data])
+    setNewRoom('')
+    toast({ title: 'Raum hinzugefügt' })
   }
 
-  async function handleExportXLSX() {
-    try {
-      await exportExpensesToXLSX(expenses)
-      toast({ title: 'Excel-Export erstellt' })
-    } catch {
-      toast({ title: 'Fehler beim Export', variant: 'destructive' })
+  async function handleAddTrade() {
+    if (!newTrade) return
+    const { data, error } = await supabase.from('trades').insert({ name: newTrade }).select().single()
+    if (error) return toast({ title: 'Fehler', variant: 'destructive' })
+    setTrades([...trades, data])
+    setNewTrade('')
+    toast({ title: 'Gewerk hinzugefügt' })
+  }
+
+  async function handleAddContractor() {
+    if (!newContractor.name) return
+    const { data, error } = await supabase
+      .from('contractors')
+      .insert(newContractor)
+      .select('*, trade:trades(name)')
+      .single()
+    if (error) return toast({ title: 'Fehler', variant: 'destructive' })
+    setContractors([...contractors, data])
+    setNewContractor({ name: '', trade_id: '', phone: '' })
+    toast({ title: 'Handwerker hinzugefügt' })
+  }
+
+  // --- LOGIK: LÖSCHEN ---
+  async function handleDelete(id: string, table: string, setter: any, state: any[]) {
+    if (!confirm('Möchtest du diesen Eintrag wirklich löschen?')) return
+    const { error } = await supabase.from(table).delete().eq('id', id)
+    
+    if (error) {
+      return toast({ 
+        title: 'Löschen nicht möglich', 
+        description: 'Dieser Eintrag wird wahrscheinlich noch in einer Aufgabe oder einem Dokument verwendet.', 
+        variant: 'destructive' 
+      })
     }
+    
+    setter(state.filter(item => item.id !== id))
+    toast({ title: 'Eintrag entfernt' })
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-5">
-      <div>
-        <h1 className="text-xl font-bold text-stone-900 md:text-2xl">Einstellungen</h1>
-        <p className="text-stone-500 text-sm">Profil und Exporte verwalten</p>
-      </div>
+    <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6 pb-24">
+      <h1 className="text-2xl font-bold text-stone-900">Einstellungen</h1>
 
-      {/* Profile */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-4 w-4" />
-            Profil
+      {/* Profil-Karte */}
+      <Card className="border-stone-200">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <User className="h-4 w-4 text-stone-500" /> Profil
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Name</Label>
-            <Input value={name} onChange={e => setName(e.target.value)} />
+        <CardContent className="flex items-center justify-between">
+          <div>
+            <p className="font-medium text-stone-900">{profile?.full_name || 'Benutzer'}</p>
+            <p className="text-sm text-stone-500">{profile?.email}</p>
           </div>
-          <div className="space-y-1.5">
-            <Label>E-Mail</Label>
-            <Input value={profile?.email ?? ''} disabled className="bg-stone-50" />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-stone-500">Rolle:</span>
-            <span className="text-sm font-medium text-stone-900 bg-stone-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-              <Shield className="h-3.5 w-3.5" />
-              {profile?.role === 'admin' ? 'Admin' : profile?.role === 'editor' ? 'Bearbeiter' : 'Leser'}
-            </span>
-          </div>
-          <Button onClick={handleSaveProfile} disabled={saving}>
-            {saving ? 'Speichert...' : 'Speichern'}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => supabase.auth.signOut()}
+            className="text-red-600 border-red-100 hover:bg-red-50"
+          >
+            <LogOut className="h-4 w-4 mr-2" /> Abmelden
           </Button>
         </CardContent>
       </Card>
 
-      {/* Exports */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Download className="h-4 w-4" />
-            Daten exportieren
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Räume verwalten */}
+        <Card className="border-stone-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Home className="h-4 w-4 text-stone-500" /> Räume
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              <Input 
+                placeholder="Raumname (z.B. Küche)" 
+                value={newRoom} 
+                onChange={e => setNewRoom(e.target.value)} 
+              />
+              <Button size="icon" onClick={handleAddRoom}><Plus className="h-4 w-4"/></Button>
+            </div>
+            <div className="space-y-1.5">
+              {rooms.map(r => (
+                <div key={r.id} className="flex justify-between items-center bg-stone-50 px-3 py-2 rounded-lg text-sm group">
+                  <span className="text-stone-700 font-medium">{r.name}</span>
+                  <button onClick={() => handleDelete(r.id, 'rooms', setRooms, rooms)} className="text-stone-300 hover:text-red-500 transition-colors">
+                    <Trash2 className="h-4 w-4"/>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Gewerke verwalten */}
+        <Card className="border-stone-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Wrench className="h-4 w-4 text-stone-500" /> Gewerke
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              <Input 
+                placeholder="z.B. Sanitär" 
+                value={newTrade} 
+                onChange={e => setNewTrade(e.target.value)} 
+              />
+              <Button size="icon" onClick={handleAddTrade}><Plus className="h-4 w-4"/></Button>
+            </div>
+            <div className="space-y-1.5">
+              {trades.map(t => (
+                <div key={t.id} className="flex justify-between items-center bg-stone-50 px-3 py-2 rounded-lg text-sm group">
+                  <span className="text-stone-700 font-medium">{t.name}</span>
+                  <button onClick={() => handleDelete(t.id, 'trades', setTrades, trades)} className="text-stone-300 hover:text-red-500 transition-colors">
+                    <Trash2 className="h-4 w-4"/>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Handwerker / Kontakte */}
+      <Card className="border-stone-200">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <HardHat className="h-4 w-4 text-stone-500" /> Handwerker & Kontakte
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid gap-2">
-            <div className="flex items-center justify-between p-3 rounded-lg border border-stone-200 bg-stone-50">
-              <div>
-                <p className="text-sm font-medium text-stone-900">Aufgaben</p>
-                <p className="text-xs text-stone-500">{tasks.length} Einträge · CSV</p>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => { exportTasksToCSV(tasks); toast({ title: 'CSV exportiert' }) }}>
-                <FileText className="h-3.5 w-3.5 mr-1.5" />
-                CSV
-              </Button>
+        <CardContent className="space-y-4">
+          <div className="grid sm:grid-cols-3 gap-3 p-4 bg-stone-50 rounded-xl border border-stone-100">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-stone-400 uppercase ml-1">Name</label>
+              <Input 
+                placeholder="Firma / Name" 
+                value={newContractor.name} 
+                onChange={e => setNewContractor({...newContractor, name: e.target.value})} 
+              />
             </div>
-            <div className="flex items-center justify-between p-3 rounded-lg border border-stone-200 bg-stone-50">
-              <div>
-                <p className="text-sm font-medium text-stone-900">Einkaufsliste</p>
-                <p className="text-xs text-stone-500">{shopping.length} Artikel · CSV</p>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => { exportShoppingToCSV(shopping); toast({ title: 'CSV exportiert' }) }}>
-                <FileText className="h-3.5 w-3.5 mr-1.5" />
-                CSV
-              </Button>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-stone-400 uppercase ml-1">Gewerk</label>
+              <select 
+                className="flex h-10 w-full rounded-md border border-stone-200 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-stone-400 outline-none"
+                value={newContractor.trade_id}
+                onChange={e => setNewContractor({...newContractor, trade_id: e.target.value})}
+              >
+                <option value="">Wählen...</option>
+                {trades.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
             </div>
-            <div className="flex items-center justify-between p-3 rounded-lg border border-stone-200 bg-stone-50">
-              <div>
-                <p className="text-sm font-medium text-stone-900">Kosten</p>
-                <p className="text-xs text-stone-500">{expenses.length} Ausgaben · CSV oder Excel</p>
-              </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-stone-400 uppercase ml-1">Telefon / Kontakt</label>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => { exportExpensesToCSV(expenses); toast({ title: 'CSV exportiert' }) }}>
-                  <FileText className="h-3.5 w-3.5 mr-1.5" />
-                  CSV
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleExportXLSX}>
-                  <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
-                  Excel
-                </Button>
+                <Input 
+                  placeholder="0176..." 
+                  value={newContractor.phone} 
+                  onChange={e => setNewContractor({...newContractor, phone: e.target.value})} 
+                />
+                <Button onClick={handleAddContractor} className="shrink-0"><Plus className="h-4 w-4"/></Button>
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Info */}
-      <Card>
-        <CardContent className="pt-5">
-          <div className="text-center space-y-1">
-            <p className="text-sm font-semibold text-stone-900">Sanierungs-Cockpit</p>
-            <p className="text-xs text-stone-400">Dein privates Bauprojekt im Griff</p>
-            <p className="text-xs text-stone-300 mt-2">Next.js · Supabase · Tailwind CSS</p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {contractors.map(c => (
+              <div key={c.id} className="flex justify-between items-center bg-white p-3 rounded-xl border border-stone-200 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-stone-100 rounded-lg flex items-center justify-center">
+                    <User className="h-4 w-4 text-stone-400" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-stone-900 text-sm">{c.name}</p>
+                    <div className="flex items-center gap-2 text-[11px] text-stone-500">
+                      <span className="flex items-center gap-1"><Tag className="h-2.5 w-2.5"/> {c.trade?.name || 'Allgemein'}</span>
+                      {c.phone && <span className="flex items-center gap-1"><Phone className="h-2.5 w-2.5"/> {c.phone}</span>}
+                    </div>
+                  </div>
+                </div>
+                <button onClick={() => handleDelete(c.id, 'contractors', setContractors, contractors)} className="text-stone-300 hover:text-red-500 p-1">
+                  <Trash2 className="h-4 w-4"/>
+                </button>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>

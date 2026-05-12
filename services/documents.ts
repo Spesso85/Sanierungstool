@@ -11,7 +11,8 @@ export async function getDocuments() {
   return data as Document[]
 }
 
-export async function uploadDocument(file: File, title: string, uploadedBy: string) {
+// Hier wurde tradeId als optionaler Parameter hinzugefügt
+export async function uploadDocument(file: File, title: string, uploadedBy: string, tradeId?: string) {
   const supabase = createClient()
   const ext = file.name.split('.').pop()
   const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
@@ -21,19 +22,30 @@ export async function uploadDocument(file: File, title: string, uploadedBy: stri
 
   const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path)
 
+  // trade_id wurde zum Insert-Objekt hinzugefügt
   const { data, error } = await supabase
     .from('documents')
-    .insert({ title, file_url: publicUrl, file_type: ext, uploaded_by: uploadedBy })
+    .insert({ 
+      title, 
+      file_url: publicUrl, 
+      file_type: ext, 
+      uploaded_by: uploadedBy,
+      trade_id: tradeId || null // Speichert die ID des Gewerks, falls ausgewählt
+    })
     .select()
     .single()
+    
   if (error) throw error
   return data as Document
 }
 
 export async function deleteDocument(id: string, fileUrl: string) {
   const supabase = createClient()
+  // Extrahiert den Dateinamen aus der URL für den Storage-Löschvorgang
   const path = fileUrl.split('/').pop()
-  if (path) await supabase.storage.from('documents').remove([path])
+  if (path) {
+    await supabase.storage.from('documents').remove([path])
+  }
   const { error } = await supabase.from('documents').delete().eq('id', id)
   if (error) throw error
 }
