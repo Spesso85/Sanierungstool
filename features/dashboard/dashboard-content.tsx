@@ -9,7 +9,6 @@ import {
 } from 'lucide-react'
 
 interface Task { id: string; title: string; status: string; due_date: string | null; trade?: { name: string } | null }
-// Expense Interface kann hier bleiben oder gelöscht werden, da wir es nicht mehr nutzen
 interface Document { id: string; title: string; file_type: string | null; created_at: string }
 interface Trade { id: string; name: string }
 interface Event { id: string; title: string; start_date: string }
@@ -69,8 +68,6 @@ export function DashboardContent({ tasks, openShoppingCount, recentDocuments, tr
           href="/shopping"
         />
       </div>
-
-      {/* Kosten Banner wurde entfernt */}
 
       <div className="grid md:grid-cols-2 gap-4">
         {/* Recent Tasks */}
@@ -188,3 +185,39 @@ export function DashboardContent({ tasks, openShoppingCount, recentDocuments, tr
             <CardTitle className="text-sm font-semibold">Gewerke</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
+            <div className="flex flex-wrap gap-2">
+              {trades.map(trade => (
+                <span key={trade.id} className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 rounded-lg text-sm text-stone-700">
+                  <Wrench className="h-3.5 w-3.5" />
+                  {trade.name}
+                </span>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}
+
+function StatCard({ label, value, icon, color, href }: {
+  label: string; value: number; icon: React.ReactNode; color: string; href: string
+}) {
+  const colors: Record<string, string> = {
+    blue: 'bg-blue-50 text-blue-700',
+    orange: 'bg-orange-50 text-orange-700',
+    green: 'bg-green-50 text-green-700',
+    gray: 'bg-stone-100 text-stone-600',
+  }
+  return (
+    <Link href={href}>
+      <div className="bg-white rounded-xl border border-stone-200 p-4 hover:border-stone-300 transition-colors">
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-3 ${colors[color]}`}>
+          {icon}
+        </div>
+        <div className="text-2xl font-bold text-stone-900">{value}</div>
+        <div className="text-xs text-stone-500 mt-0.5">{label}</div>
+      </div>
+    </Link>
+  )
+}

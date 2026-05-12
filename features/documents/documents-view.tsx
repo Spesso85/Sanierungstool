@@ -34,7 +34,6 @@ export function DocumentsView({ initialDocuments, trades, userId }: Props) {
     setUploading(true)
     
     try {
-      // Wir übergeben jetzt auch die selectedTradeId an den Service
       const doc = await uploadDocument(file, docTitle, userId, selectedTradeId)
       setDocuments(prev => [doc, ...prev])
       setTitle('')
@@ -80,7 +79,6 @@ export function DocumentsView({ initialDocuments, trades, userId }: Props) {
         </div>
       </div>
 
-      {/* Upload Card */}
       <div className="bg-white rounded-xl border border-stone-200 border-dashed p-5 mb-5 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1">
@@ -101,9 +99,7 @@ export function DocumentsView({ initialDocuments, trades, userId }: Props) {
             >
               <option value="">Kein Gewerk</option>
               {trades.map((trade) => (
-                <option key={trade.id} value={trade.id}>
-                  {trade.name}
-                </option>
+                <option key={trade.id} value={trade.id}>{trade.name}</option>
               ))}
             </select>
           </div>
@@ -126,9 +122,62 @@ export function DocumentsView({ initialDocuments, trades, userId }: Props) {
           >
             {uploading ? (
               <span className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" /> 
-                Wird hochgeladen...
+                <Loader2 className="h-4 w-4 animate-spin" /> Wird hochgeladen...
               </span>
             ) : (
               <span className="flex items-center gap-2">
-                <Upload className="h-4
+                <Upload className="h-4 w-4" /> Datei auswählen & hochladen
+              </span>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
+        <Input 
+          placeholder="Dokumente suchen..." 
+          className="pl-9" 
+          value={search} 
+          onChange={e => setSearch(e.target.value)} 
+        />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        {filtered.map(doc => (
+          <div key={doc.id} className="bg-white rounded-xl border border-stone-200 p-4 hover:shadow-sm transition-shadow">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-stone-100 rounded-lg flex items-center justify-center shrink-0">
+                {getFileIcon(doc.file_type)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-stone-900 truncate">{doc.title}</p>
+                <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                  <p className="text-[10px] text-stone-400">
+                    {doc.file_type?.toUpperCase() ?? 'Datei'} · {formatDate(doc.created_at)}
+                  </p>
+                  {doc.trade_id && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 text-[9px] font-bold uppercase">
+                      <Tag className="h-2 w-2" />
+                      {trades.find(t => t.id === doc.trade_id)?.name}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                  <div className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-700">
+                    <Download className="h-3.5 w-3.5" />
+                  </div>
+                </a>
+                <button onClick={() => handleDelete(doc)} className="p-1.5 rounded-lg hover:bg-red-50 text-stone-400 hover:text-red-600">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
